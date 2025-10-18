@@ -1,19 +1,68 @@
 import './App.css'
 import Board from "./components/board.tsx";
-import {useState} from "react";
+import {useEffect, useRef, useState} from "react";
 
 function App() {
     const [board, setBoard] = useState(Array(25).fill(0));
     const [winner, setWinner] = useState<"odd" | "even" | null>(null);
+    const [player, setPlayer] = useState<"odd" | "even" | null>(null);
+
+    const wsRef = useRef<WebSocket | null>(null);
+
+    useEffect(() => {
+        if (wsRef.current) {
+            return;
+        }
+        const ws = new WebSocket('ws://localhost:8080');
+        wsRef.current = ws;
+
+        ws.onopen = () => {
+            ws.send(JSON.stringify({
+                type: "join"
+            }));
+        };
+
+        ws.onmessage = (event) => {
+            const { type, data } = JSON.parse(event.data);
+
+            switch (type) {
+                case "welcome":
+                    setPlayer(data.player);
+                    if (data.board) {
+                        setBoard(data.board);
+                        winnerCalculate(data.board);
+                    }
+                    break;
+
+                case "UPDATE":
+                    setBoard(prevBoard => {
+                        const newBoard = [...prevBoard];
+                        newBoard[data.index] = data.value;
+                        winnerCalculate(newBoard);
+                        return newBoard;
+                    });
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        return () => {
+            ws.close();
+            wsRef.current = null;
+        }
+    }, []);
 
     const handleClick = (index : number) => {
         if (winner) return;
 
-        const newBoard = [...board];
-        newBoard[index] = newBoard[index] + 1;
-        setBoard(newBoard);
-
-        winnerCalculate(newBoard);
+        wsRef.current?.send(JSON.stringify({
+            type: "INCREMENT",
+            data: {
+                index: index,
+            },
+        }));
     }
 
     const winnerCalculate = (newBoard: number[]) => {
@@ -47,7 +96,7 @@ function App() {
     return (
     <div>
         <div className="text-2xl font-bold mb-4">{winner === "odd" ? "Odd wins" : (winner === "even" ? "Even wins" : null)}</div>
-
+        <div>You are {player}</div>
         <Board board={board} handleClick={handleClick} />
         <button onClick={() => {handleReset()}}>Reset</button>
     </div>
