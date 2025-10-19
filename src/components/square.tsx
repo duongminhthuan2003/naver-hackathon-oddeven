@@ -1,6 +1,6 @@
-function Square({value, handleClick} : { value: number, handleClick: () => void }) {
+function Square({value, handleClick, isWinning} : { value: number, handleClick: () => void, isWinning?: boolean }) {
     return (
-        <button className="flex h-16 w-16 justify-center items-center border-1" onClick={() => {handleClick()}}>
+        <button className={`flex h-16 w-16 justify-center items-center rounded-lg ${isWinning ? "bg-green-300" : "bg-gray-200 hover:bg-gray-300"} transition-all`} onClick={() => {handleClick()}}>
             {value}
         </button>
     )
